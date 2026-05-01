@@ -1,0 +1,1159 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sistema de Manipulación Levitatorio · UTB</title>
+    <style>
+      /* ─── RESET & BASE ─────────────────────────────────────────── */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      :root {
+        --blue-50: #eff6ff;
+        --blue-100: #dbeafe;
+        --blue-200: #bfdbfe;
+        --blue-400: #60a5fa;
+        --blue-500: #3b82f6;
+        --blue-600: #2563eb;
+        --blue-700: #1d4ed8;
+        --blue-800: #1e40af;
+        --blue-900: #1e3a8a;
+        --green: #059669;
+        --green-bg: #d1fae5;
+        --green-tx: #065f46;
+        --red: #dc2626;
+        --red-bg: #fee2e2;
+        --red-tx: #991b1b;
+        --gray-50: #f8fafc;
+        --gray-100: #f1f5f9;
+        --gray-200: #e2e8f0;
+        --gray-300: #cbd5e1;
+        --gray-400: #94a3b8;
+        --gray-500: #64748b;
+        --gray-700: #334155;
+        --gray-900: #0f172a;
+        --radius: 12px;
+        --shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.06);
+      }
+
+      html,
+      body {
+        height: 100%;
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background: #eef2f7;
+        color: var(--gray-900);
+        overflow: hidden; /* sin scroll */
+      }
+
+      /* ─── HEADER ────────────────────────────────────────────────── */
+      .header {
+        height: 60px;
+        background: linear-gradient(
+          135deg,
+          var(--blue-900) 0%,
+          var(--blue-700) 100%
+        );
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+        gap: 20px;
+        box-shadow: 0 2px 12px rgba(30, 58, 138, 0.35);
+        flex-shrink: 0;
+      }
+
+      .header-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .header-logo {
+        height: 44px;
+        width: auto;
+        background: #fff;
+        border-radius: 8px;
+        padding: 4px 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      .header-divider {
+        width: 1px;
+        height: 38px;
+        background: rgba(255, 255, 255, 0.25);
+      }
+
+      .header-title h1 {
+        font-size: 16px;
+        font-weight: 700;
+        color: #fff;
+        letter-spacing: -0.01em;
+      }
+
+      .header-title p {
+        font-size: 10px;
+        color: var(--blue-200);
+        margin-top: 1px;
+        font-weight: 400;
+      }
+
+      /* ─── BOTÓN CONECTAR ─────────────────────────────────────────── */
+      .conn-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 40px;
+        padding: 5px 12px 5px 10px;
+      }
+
+      #dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--gray-400);
+        flex-shrink: 0;
+        transition:
+          background 0.4s,
+          box-shadow 0.4s;
+      }
+      #dot.on {
+        background: #4ade80;
+        box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.3);
+      }
+
+      #stxt {
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.75);
+        min-width: 78px;
+        font-weight: 500;
+      }
+
+      #cbtn {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 5px 14px;
+        border: none;
+        border-radius: 20px;
+        cursor: pointer;
+        background: #fff;
+        color: var(--blue-700);
+        transition:
+          background 0.2s,
+          transform 0.1s,
+          box-shadow 0.2s;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+      }
+      #cbtn:hover {
+        background: var(--blue-50);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      }
+      #cbtn:active {
+        transform: scale(0.97);
+      }
+      #cbtn.connected {
+        background: #dc2626;
+        color: #fff;
+      }
+      #cbtn.connected:hover {
+        background: #b91c1c;
+      }
+
+      /* ─── LAYOUT PRINCIPAL ───────────────────────────────────────── */
+      /*
+  FIX LAYOUT:
+  - Columna izquierda fija (360px) para articulaciones
+  - Centro flexible (1fr) para vista del sistema — máxima prioridad de espacio
+  - Derecha fija (240px) para acciones + consola
+  - height = 100vh - header, sin scroll externo
+*/
+      .main {
+        display: grid;
+        grid-template-columns: 360px 1fr 240px;
+        grid-template-rows: 1fr;
+        gap: 12px;
+        padding: 12px 14px;
+        height: calc(100vh - 60px);
+        min-height: 0; /* permite que los hijos compriman con flex */
+      }
+
+      /* ─── CARDS ─────────────────────────────────────────────────── */
+      .card {
+        background: #fff;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        border: 1px solid var(--gray-200);
+        overflow: hidden;
+        min-height: 0; /* crítico para que flex/grid comprima */
+      }
+
+      .card-header {
+        padding: 8px 14px 7px;
+        border-bottom: 1px solid var(--gray-100);
+        font-size: 9.5px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--gray-400);
+        flex-shrink: 0;
+      }
+
+      /* ─── COLUMNA IZQUIERDA: ARTICULACIONES ──────────────────────── */
+      .col-left {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      .art-card {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      /*
+  FIX ARTICULACIONES:
+  - art-body ocupa todo el espacio restante de la card
+  - overflow-y: auto para scroll interno si hace falta
+  - gap reducido, padding ajustado para que las 3 scards quepan bien
+*/
+      .art-body {
+        flex: 1;
+        padding: 8px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        overflow-y: auto;
+        min-height: 0;
+      }
+
+      /* servo cards — crecen para ocupar espacio disponible */
+      .scard {
+        background: var(--gray-50);
+        border: 1px solid var(--gray-200);
+        border-radius: 10px;
+        padding: 10px 13px;
+        border-left-width: 4px;
+        flex: 1; /* <— se distribuyen equitativamente */
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 0;
+      }
+
+      .scard-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 6px;
+      }
+
+      .badge {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 20px;
+        margin-bottom: 2px;
+      }
+
+      .scard-name {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--gray-900);
+      }
+
+      /* ángulo más grande para mejor legibilidad */
+      .scard-angle {
+        font-size: 24px;
+        font-weight: 800;
+        line-height: 1;
+      }
+
+      canvas {
+        display: block;
+        margin: 0 auto 6px;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        cursor: pointer;
+        accent-color: var(--blue-600);
+        height: 6px; /* slider visualmente más grueso */
+      }
+
+      .slider-marks {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 3px;
+      }
+      .slider-marks span {
+        font-size: 9px;
+        color: var(--gray-400);
+      }
+
+      /* ─── COLUMNA CENTRO: VISTA DEL SISTEMA ──────────────────────── */
+      .col-center {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      .vista-card {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      /*
+  FIX VISTA DEL SISTEMA:
+  - vista-body ocupa todo el alto disponible con flex:1
+  - overflow: visible — eliminamos overflow:hidden que recortaba el SVG
+  - centrado real con flexbox (align-items + justify-content: center)
+  - el SVG usa width/height al 100% del contenedor con preserveAspectRatio
+*/
+
+      /* .vista-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;      
+  justify-content: flex-end; 
+  padding: 12px 16px 16px;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+} */
+      .vista-body {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center; /* center horizontally */
+        justify-content: center; /* center vertically */
+        padding: 12px 16px 16px;
+        position: relative;
+        overflow: hidden;
+        min-height: 0;
+      }
+
+      /* cuadrícula de fondo */
+      .vista-body::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(var(--gray-100) 1px, transparent 1px),
+          linear-gradient(90deg, var(--gray-100) 1px, transparent 1px);
+        background-size: 24px 24px;
+        border-radius: 0 0 var(--radius) var(--radius);
+        pointer-events: none;
+        /* la cuadrícula sí puede recortarse en los bordes */
+        overflow: hidden;
+        border-radius: inherit;
+      }
+
+      /*
+  FIX SVG:
+  - width y height al 100% para aprovechar el espacio del contenedor
+  - max-width y max-height con valores más grandes para que no se comprima
+  - position relative y z-index para estar sobre el fondo
+*/
+      /* #arm-svg {
+  position: relative;
+  z-index: 1;
+  width: 100%;      
+  height: 100%;     
+  flex: 1;
+  min-height: 0;
+  display: block;
+  overflow: visible;
+  filter: drop-shadow(0 4px 16px rgba(37,99,235,.18));
+  
+} */
+
+      #arm-svg {
+        position: relative;
+        z-index: 1;
+
+        width: min(75%, 660px);
+        /* height: min(75%, 420px);     */
+        height: 360px;
+        flex: 0 0 auto;
+        display: block;
+        overflow: visible;
+        filter: drop-shadow(0 4px 16px rgba(37, 99, 235, 0.18));
+      }
+
+      .vista-label {
+        font-size: 11px;
+        color: var(--gray-400);
+        margin-top: 200px;
+        z-index: 1;
+        font-style: italic;
+        flex-shrink: 0;
+      }
+
+      /* ─── COLUMNA DERECHA: ACCIONES + CONSOLA ───────────────────── */
+      /*
+  FIX CONSOLA:
+  - col-right es flex column con altura total
+  - console-card tiene flex:1 para ocupar todo el espacio restante
+  - console-body tiene flex:1 y min-height:0 para que el scroll funcione
+  - se elimina max-height fijo (200px) que limitaba la consola
+*/
+      .col-right {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-height: 0;
+      }
+
+      /* acciones */
+      .actions-card {
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0; /* no comprime los botones de acción */
+      }
+      .actions-body {
+        padding: 8px 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .action-btn {
+        width: 100%;
+        padding: 9px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        border: 1px solid var(--gray-200);
+        border-radius: 8px;
+        background: var(--gray-50);
+        color: var(--gray-700);
+        cursor: pointer;
+        text-align: left;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition:
+          background 0.15s,
+          border-color 0.15s;
+      }
+      .action-btn:hover {
+        background: var(--blue-50);
+        border-color: var(--blue-200);
+        color: var(--blue-700);
+      }
+      .action-btn .icon {
+        font-size: 14px;
+      }
+
+      /* consola — ocupa TODO el espacio restante de la columna derecha */
+      .console-card {
+        display: flex;
+        flex-direction: column;
+        flex: 1; /* crece para llenar el espacio */
+        min-height: 0;
+      }
+
+      .console-body {
+        flex: 1;
+        padding: 8px 10px;
+        overflow-y: auto; /* scroll interno funcional */
+        min-height: 0; /* crítico: permite que flex comprima correctamente */
+        scroll-behavior: smooth;
+        /* eliminado: max-height: 200px — era lo que limitaba el crecimiento */
+      }
+
+      #console {
+        font-family: "Courier New", monospace;
+        font-size: 10.5px;
+        color: var(--gray-500);
+        line-height: 1.8;
+      }
+
+      #no-support {
+        display: none;
+        background: var(--red-bg);
+        color: var(--red-tx);
+        font-size: 11px;
+        padding: 8px 10px;
+        border-radius: 6px;
+        margin-top: 6px;
+        border: 1px solid #fecaca;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ══════════ HEADER ══════════ -->
+    <header class="header">
+      <div class="header-left">
+        <img
+          class="header-logo"
+          src="data:image/png;base64,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"
+          alt="UTB Logo"
+        />
+        <div class="header-divider"></div>
+        <div class="header-title">
+          <h1>Sistema de Manipulación Levitatorio</h1>
+          <p>Arduino · USB Serial · 3 servomotores · UTB</p>
+        </div>
+      </div>
+      <div class="conn-row">
+        <div id="dot"></div>
+        <span id="stxt">Desconectado</span>
+        <button id="cbtn" onclick="toggleConnect()">Conectar Arduino</button>
+      </div>
+    </header>
+
+    <!-- ══════════ MAIN ══════════ -->
+    <div class="main">
+      <!-- ── COL IZQUIERDA: ARTICULACIONES ── -->
+      <div class="col-left">
+        <div class="card art-card">
+          <div class="card-header">Articulaciones</div>
+          <div class="art-body">
+            <!-- EJE CENTRAL 0-360 -->
+            <div class="scard" style="border-left-color: #2563eb">
+              <div class="scard-head">
+                <div>
+                  <span
+                    class="badge"
+                    style="background: #dbeafe; color: #1e40af"
+                    >Pin 9 · 0–360°</span
+                  >
+                  <p class="scard-name">Eje central</p>
+                </div>
+                <span id="angle-0" class="scard-angle" style="color: #2563eb"
+                  >180°</span
+                >
+              </div>
+              <canvas id="gauge-0" width="110" height="56"></canvas>
+              <input
+                type="range"
+                min="0"
+                max="360"
+                value="180"
+                id="sl-0"
+                oninput="setServo(0, this.value)"
+                step="1"
+              />
+              <div class="slider-marks">
+                <span>0°</span><span>90°</span><span>180°</span><span>270°</span
+                ><span>360°</span>
+              </div>
+            </div>
+
+            <!-- ANTEBRAZO 0-180 -->
+            <div class="scard" style="border-left-color: #dc2626">
+              <div class="scard-head">
+                <div>
+                  <span
+                    class="badge"
+                    style="background: #fee2e2; color: #991b1b"
+                    >Pin 10 · 0–180°</span
+                  >
+                  <p class="scard-name">Antebrazo</p>
+                </div>
+                <span id="angle-1" class="scard-angle" style="color: #dc2626"
+                  >90°</span
+                >
+              </div>
+              <canvas id="gauge-1" width="110" height="56"></canvas>
+              <input
+                type="range"
+                min="0"
+                max="180"
+                value="90"
+                id="sl-1"
+                oninput="setServo(1, this.value)"
+                step="1"
+              />
+              <div class="slider-marks">
+                <span>0°</span><span>90°</span><span>180°</span>
+              </div>
+            </div>
+
+            <!-- BRAZO 0-180 -->
+            <div class="scard" style="border-left-color: #059669">
+              <div class="scard-head">
+                <div>
+                  <span
+                    class="badge"
+                    style="background: #d1fae5; color: #065f46"
+                    >Pin 11 · 0–180°</span
+                  >
+                  <p class="scard-name">Brazo</p>
+                </div>
+                <span id="angle-2" class="scard-angle" style="color: #059669"
+                  >90°</span
+                >
+              </div>
+              <canvas id="gauge-2" width="110" height="56"></canvas>
+              <input
+                type="range"
+                min="0"
+                max="180"
+                value="90"
+                id="sl-2"
+                oninput="setServo(2, this.value)"
+                step="1"
+              />
+              <div class="slider-marks">
+                <span>0°</span><span>90°</span><span>180°</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── COL CENTRO: VISTA ── -->
+      <div class="col-center">
+        <div class="card vista-card">
+          <div class="card-header">Vista del sistema</div>
+          <div class="vista-body">
+            <!--
+          SVG v7: BASE(250,460) viewBox="-30 40 560 460"
+          ARM=160 FORE=130 GRIP=50  —  brazo llena todo el canvas
+        -->
+            <svg
+              id="arm-svg"
+              viewBox="-30 40 560 460"
+              preserveAspectRatio="xMidYMid meet"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <!-- ── Guías de referencia ── -->
+              <line
+                x1="250"
+                y1="40"
+                x2="250"
+                y2="500"
+                stroke="#cbd5e1"
+                stroke-width="1.2"
+                stroke-dasharray="7,5"
+                opacity="0.7"
+              />
+              <line
+                x1="-30"
+                y1="460"
+                x2="530"
+                y2="460"
+                stroke="#cbd5e1"
+                stroke-width="1.2"
+                stroke-dasharray="7,5"
+                opacity="0.7"
+              />
+
+              <!-- ── Base: plataforma + cuerpo + pivot ── -->
+              <!-- Platina de montaje -->
+              <rect
+                x="195"
+                y="474"
+                width="110"
+                height="16"
+                rx="5"
+                fill="#bfdbfe"
+                stroke="#2563eb"
+                stroke-width="2"
+              />
+              <!-- Cuerpo base circular -->
+              <circle
+                cx="250"
+                cy="460"
+                r="34"
+                fill="#dbeafe"
+                stroke="#2563eb"
+                stroke-width="3.5"
+              />
+              <circle cx="250" cy="460" r="13" fill="#2563eb" />
+              <!-- Spin-dot: indicador de rotación en el eje central, radio orbital=22 -->
+              <circle
+                id="spin-dot"
+                cx="272"
+                cy="452"
+                r="8"
+                fill="#60a5fa"
+                opacity="0.9"
+              />
+
+              <!-- ── Brazo (base → codo) ── -->
+              <!-- Estado inicial: 90° → vertical, codo en (250, 300) -->
+              <line
+                id="arm-line"
+                x1="250"
+                y1="460"
+                x2="250"
+                y2="300"
+                stroke="#dc2626"
+                stroke-width="16"
+                stroke-linecap="round"
+              />
+              <!-- Articulación codo -->
+              <circle
+                id="elbow"
+                cx="250"
+                cy="300"
+                r="20"
+                fill="#fee2e2"
+                stroke="#dc2626"
+                stroke-width="3.5"
+              />
+              <circle id="elbow-dot" cx="250" cy="300" r="8" fill="#dc2626" />
+
+              <!-- ── Antebrazo (codo → muñeca) ── -->
+              <!-- Estado inicial: 90° → vertical, muñeca en (250, 170) -->
+              <line
+                id="fore-line"
+                x1="250"
+                y1="300"
+                x2="250"
+                y2="170"
+                stroke="#059669"
+                stroke-width="12"
+                stroke-linecap="round"
+              />
+              <!-- Articulación muñeca -->
+              <circle
+                id="wrist"
+                cx="250"
+                cy="170"
+                r="16"
+                fill="#d1fae5"
+                stroke="#059669"
+                stroke-width="3"
+              />
+              <circle id="wrist-dot" cx="250" cy="170" r="6" fill="#059669" />
+
+              <!-- ── Gripper (muñeca → extremo) ── -->
+              <!-- Estado inicial: extremo en (250, 120) -->
+              <line
+                id="grip-stem"
+                x1="250"
+                y1="162"
+                x2="250"
+                y2="120"
+                stroke="#475569"
+                stroke-width="9"
+                stroke-linecap="round"
+              />
+              <!-- Barra transversal superior -->
+              <rect
+                id="grip-bar"
+                x="218"
+                y="109"
+                width="64"
+                height="11"
+                rx="4"
+                fill="#94a3b8"
+                stroke="#475569"
+                stroke-width="2.5"
+              />
+              <!-- Pinza izquierda -->
+              <rect
+                id="grip-left"
+                x="214"
+                y="89"
+                width="22"
+                height="24"
+                rx="5"
+                fill="#e2e8f0"
+                stroke="#475569"
+                stroke-width="2.5"
+              />
+              <!-- Pinza derecha -->
+              <rect
+                id="grip-right"
+                x="264"
+                y="89"
+                width="22"
+                height="24"
+                rx="5"
+                fill="#e2e8f0"
+                stroke="#475569"
+                stroke-width="2.5"
+              />
+            </svg>
+            <p class="vista-label">Representación visual del sistema</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── COL DERECHA: ACCIONES + CONSOLA ── -->
+      <div class="col-right">
+        <div class="card actions-card">
+          <div class="card-header">Acciones rápidas</div>
+          <div class="actions-body">
+            <button class="action-btn" onclick="centerAll()">
+              <span class="icon">🎯</span> Posición central
+            </button>
+            <button class="action-btn" onclick="homeAll()">
+              <span class="icon">🏠</span> Posición inicial (0°)
+            </button>
+            <button class="action-btn" onclick="sweepAll()" id="sweep-btn">
+              <span class="icon">🔄</span> Barrido automático
+            </button>
+          </div>
+        </div>
+
+        <div class="card console-card">
+          <div class="card-header">Consola serial</div>
+          <div class="console-body">
+            <div id="console"></div>
+            <div id="no-support">
+              Web Serial API no disponible. Usa Chrome o Edge versión 89+.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const COLORS = ["#2563eb", "#dc2626", "#059669"];
+      const MAXS = [360, 180, 180];
+      let angles = [180, 90, 90];
+      let port = null,
+        writer = null,
+        connected = false;
+      let sweeping = false,
+        sweepInterval = null;
+
+      /* ── LOG ── */
+      function log(msg) {
+        const c = document.getElementById("console");
+        const t = new Date().toLocaleTimeString("es", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+        c.innerHTML += `<span style="color:#94a3b8">[${t}]</span> ${msg}<br>`;
+        const body = c.parentElement;
+        body.scrollTop = body.scrollHeight;
+      }
+
+      /* ── GAUGE ── */
+      function drawGauge(idx, angle) {
+        const canvas = document.getElementById("gauge-" + idx);
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        const max = MAXS[idx];
+        const cx = 55,
+          cy = 52,
+          r = 42;
+        ctx.clearRect(0, 0, 110, 56);
+        // fondo
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, Math.PI, 2 * Math.PI);
+        ctx.strokeStyle = "#e2e8f0";
+        ctx.lineWidth = 8;
+        ctx.lineCap = "round";
+        ctx.stroke();
+        // arco activo
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, Math.PI, Math.PI + (angle / max) * Math.PI);
+        ctx.strokeStyle = COLORS[idx];
+        ctx.lineWidth = 8;
+        ctx.lineCap = "round";
+        ctx.stroke();
+        // aguja
+        const na = Math.PI + (angle / max) * Math.PI;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + (r - 5) * Math.cos(na), cy + (r - 5) * Math.sin(na));
+        ctx.strokeStyle = COLORS[idx];
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = "round";
+        ctx.stroke();
+        // punto central
+        ctx.beginPath();
+        ctx.arc(cx, cy, 5, 0, 2 * Math.PI);
+        ctx.fillStyle = COLORS[idx];
+        ctx.fill();
+      }
+
+      /* ── SPIN DOT (eje) ── */
+      function updateSpinDot(angle360) {
+        // BASE en (250, 460), radio orbital spin-dot = 22px
+        const rad = (angle360 / 360) * 2 * Math.PI - Math.PI / 2;
+        const dot = document.getElementById("spin-dot");
+        if (dot) {
+          dot.setAttribute("cx", Math.round(250 + 22 * Math.cos(rad)));
+          dot.setAttribute("cy", Math.round(460 + 22 * Math.sin(rad)));
+        }
+      }
+
+      /* ── SVG BRAZO v7 ──────────────────────────────────────────────────
+   Coordenadas base: BASE(250, 460)  viewBox="-30 40 560 460"
+   ─────────────────────────────────────────────────────────────────
+   Segmentos:
+     ARM_LEN  = 160  (base  → codo)
+     FORE_LEN = 130  (codo  → muñeca)
+     GRIP_LEN =  50  (muñeca → extremo gripper)
+
+   Convención angular (igual que siempre, sin cambios al usuario):
+     0°   → segmento apunta verticalmente hacia ARRIBA   (Y decrece)
+     90°  → segmento apunta horizontalmente a la DERECHA (X crece)
+     180° → segmento apunta verticalmente hacia ABAJO    (Y crece)
+     sin(θ) = Δx ,  -cos(θ) = Δy
+
+   Posiciones a 90° + 90° (estado inicial):
+     CODO    (250,       460 - 160×cos90) = (250, 460)  ← a 90° no sube, no baja
+     OJO: a 90° cos(90°)=0 → Δy=0, Δx=160 → codo en (410, 460)
+     ─ eso es lo CORRECTO para un brazo horizontal.
+     Para la pose inicial "vertical" (esteticamente mejor), inicializamos
+     angles = [180, 90, 90] pero la pose vertical se da a 0°.
+     Usamos angles[1]=90 → codo en (250+160, 460) = (410, 460).
+     Para que se vea vertical inicialmente forzamos pose en HTML: y2="300".
+
+   Rango extremo (brazo + antebrazo a 90°):
+     CODO:   (250+160, 460) = (410, 460)      → OK dentro de x_max=530
+     MUÑECA: (410+130, 460) = (540, 460)      → limita con clamp a 520
+     GRIP:   (540+50,  460) = (590→clamp 520) → clamped
+
+   Clamp seguro: x ∈ [-20, 520]  y ∈ [50, 480]
+────────────────────────────────────────────────────────────────── */
+      function updateArmSVG() {
+        const BASE_X = 250,
+          BASE_Y = 460;
+        const ARM_LEN = 160,
+          FORE_LEN = 130,
+          GRIP_LEN = 50;
+
+        // Rotación del eje central en el plano 2D (angles[0], 0..360°)
+        // Convertimos 180° a 0 radianes de offset
+        const a0r = ((angles[0] - 180) / 180) * Math.PI;
+
+        const a1r = (angles[1] / 180) * Math.PI + a0r; // brazo + eje
+        const a2r = (angles[2] / 180) * Math.PI + a0r; // antebrazo + eje
+
+        // ── Codo ──────────────────────────────────────────────────────
+        const elbowX = BASE_X + ARM_LEN * Math.sin(a1r);
+        const elbowY = BASE_Y - ARM_LEN * Math.cos(a1r);
+
+        // ── Muñeca ────────────────────────────────────────────────────
+        const wristX = elbowX + FORE_LEN * Math.sin(a2r);
+        const wristY = elbowY - FORE_LEN * Math.cos(a2r);
+
+        // ── Extremo gripper ───────────────────────────────────────────
+        const gripX = wristX + GRIP_LEN * Math.sin(a2r);
+        const gripY = wristY - GRIP_LEN * Math.cos(a2r);
+
+        // Clamp — viewBox x∈[-30,530] y∈[40,500]
+        /*
+  const clampX = x => Math.max(-20, Math.min(520, Math.round(x)));
+  const clampY = y => Math.max( 50, Math.min(480, Math.round(y)));
+
+  const eX = clampX(elbowX), eY = clampY(elbowY);
+  const wX = clampX(wristX), wY = clampY(wristY);
+  const gX = clampX(gripX),  gY = clampY(gripY);
+
+  */
+        const eX = Math.round(elbowX),
+          eY = Math.round(elbowY);
+        const wX = Math.round(wristX),
+          wY = Math.round(wristY);
+        const gX = Math.round(gripX),
+          gY = Math.round(gripY);
+
+        // ── Brazo ─────────────────────────────────────────────────────
+        const al = document.getElementById("arm-line");
+        al.setAttribute("x1", BASE_X);
+        al.setAttribute("y1", BASE_Y);
+        al.setAttribute("x2", eX);
+        al.setAttribute("y2", eY);
+
+        const el = document.getElementById("elbow");
+        const el2 = document.getElementById("elbow-dot");
+        el.setAttribute("cx", eX);
+        el.setAttribute("cy", eY);
+        if (el2) {
+          el2.setAttribute("cx", eX);
+          el2.setAttribute("cy", eY);
+        }
+
+        // ── Antebrazo ─────────────────────────────────────────────────
+        const fl = document.getElementById("fore-line");
+        fl.setAttribute("x1", eX);
+        fl.setAttribute("y1", eY);
+        fl.setAttribute("x2", wX);
+        fl.setAttribute("y2", wY);
+
+        const wr = document.getElementById("wrist");
+        const wr2 = document.getElementById("wrist-dot");
+        wr.setAttribute("cx", wX);
+        wr.setAttribute("cy", wY);
+        if (wr2) {
+          wr2.setAttribute("cx", wX);
+          wr2.setAttribute("cy", wY);
+        }
+
+        // ── Gripper ───────────────────────────────────────────────────
+        // Stem: desde muñeca hasta extremo
+        const gs = document.getElementById("grip-stem");
+        gs.setAttribute("x1", wX);
+        gs.setAttribute("y1", wY);
+        gs.setAttribute("x2", gX);
+        gs.setAttribute("y2", gY);
+
+        const deg = a2r * (180 / Math.PI);
+        const transformStr = `rotate(${deg}, ${gX}, ${gY})`;
+
+        // Barra transversal (centrada en gX, gY — extremo del stem)
+        const gb = document.getElementById("grip-bar");
+        if (gb) {
+          gb.setAttribute("x", gX - 32);
+          gb.setAttribute("y", gY - 6);
+          gb.setAttribute("transform", transformStr);
+        }
+
+        // Pinza izquierda (cuelga de la barra, a la izquierda del centro)
+        const gpl = document.getElementById("grip-left");
+        if (gpl) {
+          gpl.setAttribute("x", gX - 36);
+          gpl.setAttribute("y", gY - 24);
+          gpl.setAttribute("transform", transformStr);
+        }
+
+        // Pinza derecha (cuelga de la barra, a la derecha del centro)
+        const gpr = document.getElementById("grip-right");
+        if (gpr) {
+          gpr.setAttribute("x", gX + 14);
+          gpr.setAttribute("y", gY - 24);
+          gpr.setAttribute("transform", transformStr);
+        }
+      }
+
+      /* ── SET SERVO ── */
+      function setServo(idx, val) {
+        val = parseInt(val);
+        angles[idx] = val;
+        document.getElementById("angle-" + idx).textContent = val + "°";
+        drawGauge(idx, val);
+        if (idx === 0) {
+          updateSpinDot(val);
+          updateArmSVG();
+        } else updateArmSVG();
+        sendCmd(idx, val);
+      }
+
+      /* ── SEND ── */
+      async function sendCmd(idx, val) {
+        const cmd = `S${idx}:${val}\n`;
+        log("→ " + cmd.trim());
+        if (!writer) return;
+        try {
+          await writer.write(new TextEncoder().encode(cmd));
+        } catch (e) {
+          log("Error: " + e.message);
+        }
+      }
+
+      /* ── ACCIONES ── */
+      function centerAll() {
+        [180, 90, 90].forEach((v, i) => {
+          document.getElementById("sl-" + i).value = v;
+          setServo(i, v);
+        });
+      }
+
+      function homeAll() {
+        [0, 0, 0].forEach((v, i) => {
+          document.getElementById("sl-" + i).value = v;
+          setServo(i, v);
+        });
+      }
+
+      function sweepAll() {
+        if (sweeping) {
+          clearInterval(sweepInterval);
+          sweeping = false;
+          document.getElementById("sweep-btn").innerHTML =
+            '<span class="icon">🔄</span> Barrido automático';
+          return;
+        }
+        sweeping = true;
+        document.getElementById("sweep-btn").innerHTML =
+          '<span class="icon">⏹</span> Detener barrido';
+        let d = 1,
+          v = 90;
+        sweepInterval = setInterval(() => {
+          v += d * 3;
+          if (v >= 180) {
+            v = 180;
+            d = -1;
+          }
+          if (v <= 0) {
+            v = 0;
+            d = 1;
+          }
+          [1, 2].forEach((i) => {
+            document.getElementById("sl-" + i).value = v;
+            setServo(i, v);
+          });
+        }, 60);
+      }
+
+      /* ── CONEXIÓN SERIAL ── */
+      async function toggleConnect() {
+        if (connected) {
+          await disconnect();
+          return;
+        }
+        if (!("serial" in navigator)) {
+          document.getElementById("no-support").style.display = "block";
+          return;
+        }
+        try {
+          port = await navigator.serial.requestPort();
+          await port.open({ baudRate: 9600 });
+          writer = port.writable.getWriter();
+          connected = true;
+          document.getElementById("dot").classList.add("on");
+          document.getElementById("stxt").textContent = "Conectado";
+          document.getElementById("cbtn").textContent = "Desconectar";
+          document.getElementById("cbtn").classList.add("connected");
+          log("✓ Conexión establecida · 9600 baud");
+        } catch (e) {
+          log("✗ Error: " + e.message);
+        }
+      }
+
+      async function disconnect() {
+        try {
+          if (writer) {
+            writer.releaseLock();
+            writer = null;
+          }
+          if (port) {
+            await port.close();
+            port = null;
+          }
+        } catch (e) {}
+        connected = false;
+        document.getElementById("dot").classList.remove("on");
+        document.getElementById("stxt").textContent = "Desconectado";
+        document.getElementById("cbtn").textContent = "Conectar Arduino";
+        document.getElementById("cbtn").classList.remove("connected");
+        log("· Desconectado");
+      }
+
+      /* ── INIT ── */
+      [0, 1, 2].forEach((i) => drawGauge(i, angles[i]));
+      updateSpinDot(180); // angles[0]=180 → spin-dot apunta a la derecha de la base
+      updateArmSVG();
+      log("Sistema listo · Eje central (0–360°) · Antebrazo y Brazo (0–180°)");
+    </script>
+  </body>
+</html>
